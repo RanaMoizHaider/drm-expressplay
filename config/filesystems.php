@@ -57,6 +57,17 @@ return [
             'throw' => false,
         ],
 
+        'storj' => [
+            'driver' => 's3',
+            'grant' => env('STORJ_ACCESS_GRANT'),
+            'key' => env('STORJ_ACCESS_KEY'),
+            'secret' => env('STORJ_SECRET_KEY'),
+            'region' => env('STORJ_REGION', 'EU1'),
+            'bucket' => env('STORJ_BUCKET'),
+            'endpoint' => env('STORJ_ENDPOINT', 'https://gateway.storj.io'),
+            'use_path_style_endpoint' => true,
+        ],
+
     ],
 
     /*
