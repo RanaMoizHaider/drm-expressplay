@@ -1,6 +1,8 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Jobs\SubmitMediaConvertJob;
+use Config;
 use Illuminate\Http\Request;
 use App\Services\MediaConvertService;
 use Illuminate\Support\Facades\Storage;
@@ -19,16 +21,17 @@ class VideoController extends Controller
     public function index()
     {
         // List all videos from the "videos" directory in Storj
-        $files = Storage::disk('storj')->allFiles('videos');
+//        $files = Storage::disk('storj')->allFiles('videos');
+        $files = Storage::disk('s3')->allFiles('videos');
 
         // Generate random tokens for each video (stored in session for demo purposes)
         $videos = [];
         foreach ($files as $file) {
             $token = Str::random(40);
-            session()->put($token, $file); // Map the token to the actual file
+            session()->put($token, $file);
             $videos[] = [
-                'name' => basename($file),  // Extract the filename
-                'token' => $token,          // The secure access token
+                'name' => basename($file),
+                'token' => $token,
             ];
         }
 
@@ -37,37 +40,32 @@ class VideoController extends Controller
 
     public function showUploadForm()
     {
+//        dd(Config::get('mediaconversion'));
         return view('video.upload');
     }
 
     public function uploadVideo(Request $request)
     {
-        \Log::info('Function called to upload video: ' . $request->file('video')->getClientOriginalName());
-
         $request->validate([
             'video' => 'required|mimes:mp4|max:200000',
         ]);
 
-        \Log::info('Uploading video: ' . $request->file('video')->getClientOriginalName());
-
         $file = $request->file('video');
         $filename = $file->getClientOriginalName();
-        $path = Storage::disk('storj')->putFileAs('videos', $file, $filename);
-
-        \Log::info('Uploaded video: ' . $filename);
+        $filenameWithoutExtension = pathinfo($filename, PATHINFO_FILENAME);
+        $filePath = Storage::disk('s3')->putFileAs('videos', $file, $filename);
+        \Log::info('Uploaded video to: ' . $filePath);
 
         $accessToken = Str::random(40);
         session()->put($accessToken, $filename);
 
-        try {
-            $this->mediaConvertService->createMediaConvertJob($path);
-            \Log::info('MediaConvert job created for video: ' . $filename);
-        } catch (\Exception $e) {
-            \Log::error('Error processing video: ' . $e->getMessage());
-            return back()->withErrors('Error processing video: ' . $e->getMessage());
-        }
+        $inputPath = 's3://' . config('filesystems.disks.s3.bucket') . '/' . $filePath;
+        $outputPath = 's3://' . config('filesystems.disks.s3.bucket') . '/encryptedvideos/' . $filenameWithoutExtension . '/';
 
-        return redirect()->route('video.play', ['token' => $accessToken]);
+        SubmitMediaConvertJob::dispatch($filePath, $inputPath, $outputPath);
+
+//        return redirect()->route('video.play', ['token' => $accessToken]);
+        return redirect()->route('video.index');
     }
 
     public function playVideo($token)
@@ -77,7 +75,17 @@ class VideoController extends Controller
             abort(403, "Unauthorized access");
         }
 
-        return view('video.play', compact('filename', 'token'));
+        $videoUrl = route('video.stream', ['token' => $token]);
+
+        // DRM configuration for Shaka Player
+        $drmConfig = [
+            'servers' => [
+                'com.widevine.alpha' => config('mediaconversion.aws.speke'),
+                'com.apple.fps.1_0' => config('mediaconversion.aws.speke'),
+            ]
+        ];
+
+        return view('video.play', compact('videoUrl', 'drmConfig'));
     }
 
     public function streamVideo($token)
@@ -87,6 +95,6 @@ class VideoController extends Controller
             abort(403, "Unauthorized access");
         }
 
-        return Storage::disk('storj')->response('videos/' . $filename);
+        return Storage::disk('s3')->response('test' . $filename);
     }
 }

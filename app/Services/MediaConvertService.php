@@ -22,72 +22,109 @@ class MediaConvertService
         ]);
     }
 
-    public function createMediaConvertJob($inputPath)
+    public function createMediaConvertJob($filePath, $inputPath, $outputPath)
     {
-        \Log::info('Creating MediaConvert job for ' . $inputPath);
-        \Log::info('AWS Role: ' . config('mediaconversion.aws.role'));
         $jobSettings = [
-            'Inputs' => [
-                [
-                    'FileInput' => 's3://' . config('filesystems.disks.storj.bucket') . '/' . $inputPath,
-                    'AudioSelectors' => [
-                        'Audio Selector 1' => ['DefaultSelection' => 'DEFAULT'],
-                    ],
-                    'VideoSelector' => [
-                        'ColorSpace' => 'FOLLOW',
-                    ],
-                ],
+            'TimecodeConfig' => [
+                'Source' => 'ZEROBASED',
             ],
             'OutputGroups' => [
                 [
+                    'CustomName' => 'encryptedVids',
                     'Name' => 'DASH ISO',
                     'Outputs' => [
                         [
                             'ContainerSettings' => [
-                                'Container' => 'MPEG_DASH',
+                                'Container' => 'MPD',
                             ],
                             'VideoDescription' => [
                                 'CodecSettings' => [
                                     'Codec' => 'H_264',
+                                    'H264Settings' => [
+                                        'MaxBitrate' => 500000,
+                                        'RateControlMode' => 'QVBR',
+                                        'SceneChangeDetect' => 'TRANSITION_DETECTION',
+                                    ],
                                 ],
                             ],
-                            'DRM' => [
-                                'Widevine' => [
-                                    'ContentId' => config('mediaconversion.widevine.id'),
-                                    'KeyProviderSettings' => [
-                                        'SpekeKeyProvider' => [
-                                            'ResourceId' => config('mediaconversion.widevine.id'),
-                                            'RoleArn' => config('mediaconversion.aws.role'),
-                                            'SystemIds' => ['edef8ba9-79d6-4ace-a3c8-27dcd51d21ed'],
-                                            'Url' => config('mediaconversion.aws.speke'),
+                            'NameModifier' => '_vid',
+                        ],
+                        [
+                            'ContainerSettings' => [
+                                'Container' => 'MPD',
+                            ],
+                            'AudioDescriptions' => [
+                                [
+                                    'CodecSettings' => [
+                                        'Codec' => 'AAC',
+                                        'AacSettings' => [
+                                            'Bitrate' => 96000,
+                                            'CodingMode' => 'CODING_MODE_2_0',
+                                            'SampleRate' => 48000,
                                         ],
                                     ],
                                 ],
-//                                'PlayReady' => [
-//                                    'ContentId' => config('mediaconversion.playready.id'),
-//                                    'KeyProviderSettings' => [
-//                                        'SpekeKeyProvider' => [
-//                                            'ResourceId' => config('mediaconversion.playready.id'),
-//                                            'RoleArn' => config('mediaconversion.aws.role'),
-//                                            'SystemIds' => ['9a04f079-9840-4286-ab92-e65be0885f95'],
-//                                            'Url' => config('mediaconversion.aws.speke'),
-//                                        ],
-//                                    ],
-//                                ],
                             ],
+                            'NameModifier' => '_aud',
                         ],
                     ],
+                    'OutputGroupSettings' => [
+                        'Type' => 'DASH_ISO_GROUP_SETTINGS',
+                        'DashIsoGroupSettings' => [
+                            'SegmentLength' => 30,
+                            'Destination' => $outputPath,
+                            'DestinationSettings' => [
+                                'S3Settings' => [
+                                    'AccessControl' => [
+                                        'CannedAcl' => 'PUBLIC_READ',
+                                    ],
+                                ],
+                            ],
+                            'Encryption' => [
+                                'SpekeKeyProvider' => [
+                                    'ResourceId' => '4196bb227801976995b2c275f1b79969',
+                                    'SystemIds' => [
+                                        'edef8ba9-79d6-4ace-a3c8-27dcd51d21ed',
+                                    ],
+                                    'Url' => 'https://qsns6kb4c7.execute-api.us-east-1.amazonaws.com/dev/encryptionKeys',
+                                ],
+                            ],
+                            'FragmentLength' => 2,
+                        ],
+                    ],
+                ],
+            ],
+            'FollowSource' => 1,
+            'Inputs' => [
+                [
+                    'AudioSelectors' => [
+                        'Audio Selector 1' => [
+                            'DefaultSelection' => 'DEFAULT',
+                        ],
+                    ],
+                    'VideoSelector' => [],
+                    'TimecodeSource' => 'ZEROBASED',
+                    'FileInput' => $inputPath,
                 ],
             ],
         ];
 
         try {
             $result = $this->mediaConvertClient->createJob([
+                'Queue' => config('mediaconversion.aws.queue'),
                 'Role' => config('mediaconversion.aws.role'),
-                'Settings' => $jobSettings
+                'UserMetadata' => [],
+                'Settings' => $jobSettings,
+                'BillingTagsSource' => 'JOB',
+                'AccelerationSettings' => [
+                    'Mode' => 'DISABLED',
+                ],
+                'StatusUpdateInterval' => 'SECONDS_60',
+                'Priority' => 0,
             ]);
             return $result['Job']['Id'];
         } catch (AwsException $e) {
+            \Log::error('Error creating MediaConvert job: ' . $e->getMessage());
             throw new \Exception('Error creating MediaConvert job: ' . $e->getMessage());
         }
     }

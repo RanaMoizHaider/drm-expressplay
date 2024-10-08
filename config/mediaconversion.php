@@ -8,6 +8,7 @@ return [
         'key' => env('AWS_MEDIACONVERT_ACCESS_KEY_ID'),
         'secret' => env('AWS_MEDIACONVERT_SECRET_ACCESS_KEY'),
         'speke' => env('SPEKE_SERVER_URL'),
+        'queue' => env('AWS_MEDIACONVERT_QUEUE'),
     ],
     'widevine' => [
         'id' => env('WIDEVINE_ID'),
