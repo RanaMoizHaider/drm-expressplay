@@ -38,8 +38,8 @@
                 // Pass the PHP DRM configuration to JavaScript
                 var drmConfig = @json($drmConfig);
 
-                        src: '{{ $videoUrl }}',
                 var src = {
+                    src: '{{ $videoUrl }}',
                     type: 'application/dash+xml'  // DASH manifest type
                 };
 
