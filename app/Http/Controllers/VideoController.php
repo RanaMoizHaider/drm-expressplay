@@ -111,12 +111,9 @@ class VideoController extends Controller
 //        $marlinLicenseUri = $this->getMarlinLicenseUri(config('mediaconversion.expressplay.content_key'), config('mediaconversion.expressplay.kid'));
 
         // Generate signed URL for the .mpd manifest
-//        $videoUrl = Storage::disk('s3')->temporaryUrl(
-//            "encryptedvideos/{$folderName}/{$folderName}.mpd", now()->addMinutes(60)
-//        );
-
-        $videoUrl = Storage::disk('s3')->url("encryptedvideos/{$folderName}/{$folderName}.mpd");
-        $videoUrl = 'https://rmhnetflix.s3.amazonaws.com' . $videoUrl;
+        $videoUrl = Storage::disk('s3')->temporaryUrl(
+            "encryptedvideos/{$folderName}/{$folderName}.mpd", now()->addMinutes(60)
+        );
 
         // DRM configuration for Video.js
         $drmConfig = [
