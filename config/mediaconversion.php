@@ -10,8 +10,20 @@ return [
         'speke' => env('SPEKE_SERVER_URL'),
         'queue' => env('AWS_MEDIACONVERT_QUEUE'),
     ],
+    'expressplay' => [
+        'api_key' => env('EXPRESSPLAY_API_KEY'),
+        'kek' => env('EXPRESSPLAY_KEK'),
+        'kid' => env('EXPRESSPLAY_KID'),
+        'content_key' => env('EXPRESSPLAY_K'),
+        'kekid' => env('EXPRESSPLAY_KEKID'),
+        'ek' => env('EXPRESSPLAY_EK'),
+    ],
+    'resource_id' => env('RESOURCE_ID'),
     'widevine' => [
         'id' => env('WIDEVINE_ID'),
+    ],
+    'marlin' => [
+        'id' => env('MARLIN_ID'),
     ],
     'playready' => [
         'id' => env('PLAYREADY_ID'),

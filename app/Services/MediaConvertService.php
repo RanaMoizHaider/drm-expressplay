@@ -1,6 +1,7 @@
 <?php
 namespace App\Services;
 
+use AWS\CRT\Log;
 use Aws\MediaConvert\MediaConvertClient;
 use Aws\Exception\AwsException;
 
@@ -82,11 +83,12 @@ class MediaConvertService
                             ],
                             'Encryption' => [
                                 'SpekeKeyProvider' => [
-                                    'ResourceId' => '4196bb227801976995b2c275f1b79969',
+                                    'ResourceId' => config('mediaconversion.resource_id'),
                                     'SystemIds' => [
-                                        'edef8ba9-79d6-4ace-a3c8-27dcd51d21ed',
+                                        config('mediaconversion.widevine.id'),
+                                        config('mediaconversion.marlin.id')
                                     ],
-                                    'Url' => 'https://qsns6kb4c7.execute-api.us-east-1.amazonaws.com/dev/encryptionKeys',
+                                    'Url' => config('mediaconversion.aws.speke'),
                                 ],
                             ],
                             'FragmentLength' => 2,

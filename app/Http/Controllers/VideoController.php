@@ -2,11 +2,11 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\SubmitMediaConvertJob;
-use Config;
 use Illuminate\Http\Request;
 use App\Services\MediaConvertService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Http;
 
 class VideoController extends Controller
 {
@@ -17,20 +17,20 @@ class VideoController extends Controller
         $this->mediaConvertService = $mediaConvertService;
     }
 
-    // Index method to list all videos in Storj
+    // Index method to list all videos in S3
     public function index()
     {
-        // List all videos from the "videos" directory in Storj
-//        $files = Storage::disk('storj')->allFiles('videos');
-        $files = Storage::disk('s3')->allFiles('videos');
+        // Fetch folder names from the "encryptedvideos" directory in S3 bucket
+        $directories = Storage::disk('s3')->directories('encryptedvideos');
 
-        // Generate random tokens for each video (stored in session for demo purposes)
+        // Generate random tokens for each folder (stored in session for demo purposes)
         $videos = [];
-        foreach ($files as $file) {
+        foreach ($directories as $directory) {
+            $folderName = basename($directory); // Extract the folder name (video title)
             $token = Str::random(40);
-            session()->put($token, $file);
+            session()->put($token, $folderName); // Store folder name in session with a token
             $videos[] = [
-                'name' => basename($file),
+                'name' => $folderName,
                 'token' => $token,
             ];
         }
@@ -40,7 +40,6 @@ class VideoController extends Controller
 
     public function showUploadForm()
     {
-//        dd(Config::get('mediaconversion'));
         return view('video.upload');
     }
 
@@ -64,37 +63,69 @@ class VideoController extends Controller
 
         SubmitMediaConvertJob::dispatch($filePath, $inputPath, $outputPath);
 
-//        return redirect()->route('video.play', ['token' => $accessToken]);
         return redirect()->route('video.index');
+    }
+
+    // Generate Widevine license URL from ExpressPlay
+    public function getWidevineLicenseUri($contentKey, $kid)
+    {
+        $response = Http::get('https://wv-gen.service.expressplay.com/hms/wv/token', [
+            'customerAuthenticator' => config('mediaconversion.expressplay.api_key'),
+            'kid' => $kid,
+            'contentKey' => $contentKey,
+            'useHttps' => true
+        ]);
+
+        if ($response->successful()) {
+            return $response->body();
+        } else {
+            throw new \Exception('Unable to retrieve Widevine license.');
+        }
+    }
+
+    // Generate Marlin license URL from ExpressPlay
+    public function getMarlinLicenseUri($contentKey, $kid)
+    {
+        $response = Http::get('https://ms3-gen.service.expressplay.com/hms/ms3/token', [
+            'customerAuthenticator' => config('mediaconversion.expressplay.api_key'),
+            'kid' => $kid,
+            'contentKey' => $contentKey,
+            'useHttps' => true
+        ]);
+
+        if ($response->successful()) {
+            return $response->body();
+        } else {
+            throw new \Exception('Unable to retrieve Marlin license.');
+        }
     }
 
     public function playVideo($token)
     {
-        $filename = session()->get($token);
-        if (!$filename) {
+        $folderName = session()->get($token);
+        if (!$folderName) {
             abort(403, "Unauthorized access");
         }
 
-        $videoUrl = route('video.stream', ['token' => $token]);
+        // Fetch license URIs for Widevine and Marlin
+        $widevineLicenseUri = $this->getWidevineLicenseUri(config('mediaconversion.expressplay.content_key'), config('mediaconversion.expressplay.kid'));
+//        $marlinLicenseUri = $this->getMarlinLicenseUri(config('mediaconversion.expressplay.content_key'), config('mediaconversion.expressplay.kid'));
 
-        // DRM configuration for Shaka Player
+        // Generate signed URL for the .mpd manifest
+//        $videoUrl = Storage::disk('s3')->temporaryUrl(
+//            "encryptedvideos/{$folderName}/{$folderName}.mpd", now()->addMinutes(60)
+//        );
+
+        $videoUrl = Storage::disk('s3')->url("encryptedvideos/{$folderName}/{$folderName}.mpd");
+        \Log::info('Video URL: ' . $videoUrl);
+        \Log::info('Widevine License URI: ' . $widevineLicenseUri);
+
+        // DRM configuration for Video.js
         $drmConfig = [
-            'servers' => [
-                'com.widevine.alpha' => config('mediaconversion.aws.speke'),
-                'com.apple.fps.1_0' => config('mediaconversion.aws.speke'),
-            ]
+            'widevineLicenseUri' => $widevineLicenseUri,
+//            'marlinLicenseUri' => $marlinLicenseUri
         ];
 
         return view('video.play', compact('videoUrl', 'drmConfig'));
-    }
-
-    public function streamVideo($token)
-    {
-        $filename = session()->get($token);
-        if (!$filename) {
-            abort(403, "Unauthorized access");
-        }
-
-        return Storage::disk('s3')->response('test' . $filename);
     }
 }
