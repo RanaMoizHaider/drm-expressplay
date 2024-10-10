@@ -83,7 +83,6 @@
                 }
 
                 player.ready(function () {
-                    console.log(src);
                     player.src(src);
                 });
             });
