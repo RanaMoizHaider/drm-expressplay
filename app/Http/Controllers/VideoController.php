@@ -53,7 +53,6 @@ class VideoController extends Controller
         $filename = $file->getClientOriginalName();
         $filenameWithoutExtension = pathinfo($filename, PATHINFO_FILENAME);
         $filePath = Storage::disk('s3')->putFileAs('videos', $file, $filename);
-        \Log::info('Uploaded video to: ' . $filePath);
 
         $accessToken = Str::random(40);
         session()->put($accessToken, $filename);
@@ -117,8 +116,7 @@ class VideoController extends Controller
 //        );
 
         $videoUrl = Storage::disk('s3')->url("encryptedvideos/{$folderName}/{$folderName}.mpd");
-        \Log::info('Video URL: ' . $videoUrl);
-        \Log::info('Widevine License URI: ' . $widevineLicenseUri);
+        $videoUrl = 'https://rmhnetflix.s3.amazonaws.com' . $videoUrl;
 
         // DRM configuration for Video.js
         $drmConfig = [

@@ -1,7 +1,6 @@
 <?php
 namespace App\Services;
 
-use AWS\CRT\Log;
 use Aws\MediaConvert\MediaConvertClient;
 use Aws\Exception\AwsException;
 

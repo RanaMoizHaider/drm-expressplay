@@ -4,10 +4,10 @@
 
     <x-slot:styles>
         <!-- Video.js CSS -->
-        <link href="https://vjs.zencdn.net/8.16.1/video-js.css" rel="stylesheet" />
+        <link href="https://unpkg.com/video.js/dist/video-js.css" rel="stylesheet" />
     </x-slot:styles>
 
-    <div class="flex justify-center items-center min-h-screen">
+    <div class="flex justify-center items-center">
         <div class="relative w-full md:w-2/3 lg:w-1/2">
             <!-- Video.js player -->
             <video id="video-player" class="video-js vjs-default-skin vjs-16-9" controls preload="auto" width="640" height="360">
@@ -23,7 +23,7 @@
 
     <x-slot:scripts>
         <!-- Video.js and DASH.js -->
-        <script src="https://vjs.zencdn.net/8.16.1/video.min.js"></script>
+        <script src="https://unpkg.com/video.js/dist/video.js"></script>
         <!-- Include Dash.js library -->
         <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
         <!-- Include videojs-contrib-dash -->
@@ -33,48 +33,54 @@
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 var player = videojs('video-player');
-                player.eme();
+
+                // player.eme();
 
                 // Pass the PHP DRM configuration to JavaScript
                 var drmConfig = @json($drmConfig);
 
                 var src = {
                     src: '{{ $videoUrl }}',
-                    type: 'application/dash+xml'  // DASH manifest type
+                    type: 'application/dash+xml'
                 };
 
-                    var keySystems = {};
+                src.keySystemOptions = [];
 
-                    // Conditionally add Widevine DRM if the license URI is available
-                    if (drmConfig.widevineLicenseUri) {
-                        keySystems['com.widevine.alpha'] = drmConfig.widevineLicenseUri;
-                    }
+                if (drmConfig.widevineLicenseUri) {
+                    src.keySystemOptions.push({
+                        name: 'com.widevine.alpha',
+                        options: {
+                            serverURL: drmConfig.widevineLicenseUri
+                        }
+                    });
+                }
 
-                    // Conditionally add Marlin DRM if the license URI is available
-                    if (drmConfig.marlinLicenseUri) {
-                        keySystems['urn:marlin:mas:1.0:'] = {
-                            licenseUri: drmConfig.marlinLicenseUri
-                        };
-                    }
+                if (drmConfig.marlinLicenseUri) {
+                    src.keySystemOptions.push({
+                        name: 'com.microsoft.playready',
+                        options: {
+                            serverURL: drmConfig.marlinLicenseUri
+                        }
+                    });
+                }
 
-                    // Conditionally add PlayReady DRM if the license URI is available
-                    if (drmConfig.playreadyLicenseUri) {
-                        keySystems['com.microsoft.playready'] = {
-                            licenseUri: drmConfig.playreadyLicenseUri
-                        };
-                    }
+                if (drmConfig.playreadyLicenseUri) {
+                    src.keySystemOptions.push({
+                        name: 'com.microsoft.playready',
+                        options: {
+                            serverURL: drmConfig.playreadyLicenseUri
+                        }
+                    });
+                }
 
-                    // Conditionally add FairPlay DRM if the license URI is available
-                    if (drmConfig.fairplayLicenseUri) {
-                        keySystems['com.apple.fps.1_0'] = {
-                            licenseUri: drmConfig.fairplayLicenseUri
-                        };
-                    }
-
-                    // Only add keySystems if any DRM configurations are available
-                    if (Object.keys(keySystems).length > 0) {
-                        src.keySystems = keySystems;
-                    }
+                if (drmConfig.fairplayLicenseUri) {
+                    src.keySystemOptions.push({
+                        name: 'com.microsoft.playready',
+                        options: {
+                            serverURL: drmConfig.fairplayLicenseUri
+                        }
+                    });
+                }
 
                 player.ready(function () {
                     console.log(src);
