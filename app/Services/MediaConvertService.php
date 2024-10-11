@@ -13,7 +13,7 @@ class MediaConvertService
         // Initialize AWS MediaConvert client with config values
         $this->mediaConvertClient = new MediaConvertClient([
             'region' => config('mediaconversion.aws.region'),
-            'version' => '2017-08-29',
+            'version' => 'latest',
             'credentials' => [
                 'key' => config('mediaconversion.aws.key'),
                 'secret' => config('mediaconversion.aws.secret'),
