@@ -57,7 +57,7 @@ class VideoController extends Controller
         $accessToken = Str::random(40);
         session()->put($accessToken, $filename);
 
-        $inputPath = 's3://' . config('filesystems.disks.s3.bucket') . '/ep/' . $filePath;
+        $inputPath = 's3://' . config('filesystems.disks.s3.bucket') . '/' . $filePath;
         $outputPath = 's3://' . config('filesystems.disks.s3.bucket') . '/ep/encryptedvideos/' . $filenameWithoutExtension . '/';
 
         SubmitMediaConvertJob::dispatch($filePath, $inputPath, $outputPath);
