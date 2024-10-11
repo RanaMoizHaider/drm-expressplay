@@ -21,7 +21,7 @@ class VideoController extends Controller
     public function index()
     {
         // Fetch folder names from the "encryptedvideos" directory in S3 bucket
-        $directories = Storage::disk('s3')->directories('encryptedvideos');
+        $directories = Storage::disk('s3')->directories('ep/encryptedvideos');
 
         // Generate random tokens for each folder (stored in session for demo purposes)
         $videos = [];
@@ -52,13 +52,13 @@ class VideoController extends Controller
         $file = $request->file('video');
         $filename = $file->getClientOriginalName();
         $filenameWithoutExtension = pathinfo($filename, PATHINFO_FILENAME);
-        $filePath = Storage::disk('s3')->putFileAs('videos', $file, $filename);
+        $filePath = Storage::disk('s3')->putFileAs('ep/videos', $file, $filename);
 
         $accessToken = Str::random(40);
         session()->put($accessToken, $filename);
 
-        $inputPath = 's3://' . config('filesystems.disks.s3.bucket') . '/' . $filePath;
-        $outputPath = 's3://' . config('filesystems.disks.s3.bucket') . '/encryptedvideos/' . $filenameWithoutExtension . '/';
+        $inputPath = 's3://' . config('filesystems.disks.s3.bucket') . '/ep/' . $filePath;
+        $outputPath = 's3://' . config('filesystems.disks.s3.bucket') . '/ep/encryptedvideos/' . $filenameWithoutExtension . '/';
 
         SubmitMediaConvertJob::dispatch($filePath, $inputPath, $outputPath);
 
