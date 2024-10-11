@@ -53,7 +53,7 @@
                     {{ $slot }}
 
                     <footer class="py-16 text-center text-sm text-black dark:text-white/70">
-                        Encrypted Video Player
+                        View code on <a href="https://github.com/RanaMoizHaider/secureplayer" target="_blank" class="text-black dark:text-white">Github</a>
                     </footer>
                 </div>
             </div>
