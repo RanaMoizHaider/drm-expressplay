@@ -59,7 +59,9 @@
                     src.keySystemOptions.push({
                         name: 'com.microsoft.playready',
                         options: {
-                            serverURL: drmConfig.marlinLicenseUri
+                            serverURL: drmConfig.marlinLicenseUri,
+                            audioRobustness: 'HW_SECURE_ALL',
+                            videoRobustness: 'HW_SECURE_ALL'
                         }
                     });
                 }
